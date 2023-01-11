@@ -1,8 +1,7 @@
-# web-demo-quickdraw-visualizer
+# Quickdraw Visualizer
 
 TLDR: Google recently launched a web tool called Quick Draw which asks you to draw an object then tries to guess that object using a Neural Network AI. I "reverse-engineered" it and made my own drawing-guessing tool which leverages the same Google AI but adds some extra visualization.
 
-<img src="screenshots/screenshot_web-demo-quickdraw-visualizer.png" height="500px" width="auto">
 
 To check out the drawing tool, go to <a href="https://engelsjk.github.io/web-demo-quickdraw-visualizer/" target="_blank">https://engelsjk.github.io/web-demo-quickdraw-visualizer/</a> and start drawing! You'll quickly see a plot of "guesses" of what object you're drawing and their relative fit scores, all provided by the Google AI behind the Google Quick Draw tool.
 
@@ -24,17 +23,14 @@ Initially, I was simply curious to know how the Google Quick Draw web tool worke
 <h1>Quick Draw</h1>
 First, I set out to look at the network calls of the Quick Draw web tool using the Chrome DevTools. When starting the Quick Draw page, it first asks you to draw an object which it will then try to guess.
 
-<img src="screenshots/screenshot_quickdraw-google-1.png" height="500px" width="auto">
 
 As you draw, a lot of POST requests are sent to what appears to be an API endpoint at <i>inputtools.google.com</i>.
 
-<img src="screenshots/screenshot_quickdraw-google-2.png" height="500px" width="auto">
 
 (You can also see an OPTION request for each POST request, but I ignored those for this investigation assuming that I wouldn't be able to interpret their intent from the client side.)
 
 The most important part of these POST requests is the data payload itself, which consists of a JSON string with two main components: (i) the drawing canvas width/height and (ii) an "ink" array that consists of three arrays of numbers.
 
-<img src="screenshots/screenshot_quickdraw-google-3.png" height="500px" width="auto">
 
 <b>IMPORTANT: This "ink" array is obviously the data behind the canvas drawing in some format. It took a bit of trial-and-error, but I eventually figured out that the ink array includes values for X,Y as well as time in the following format:</b> 
 
@@ -44,7 +40,6 @@ The most important part of these POST requests is the data payload itself, which
 
 The response to each of these POST requests is some JSON data that includes (i) the results of the drawing guesses and (ii) what appears to be some details about the Google AI engine (e.g. call and compute latency).   
 
-<img src="screenshots/screenshot_quickdraw-google-4.png" height="500px" width="auto">
 
 <h1>Chrome Extension</h1>
 
@@ -54,11 +49,9 @@ Having played around with Chrome Extensions before (<a href="https://github.com/
 
 To see the <code>console.log</code>'d output of a Background Page, you need to Inspect View of the Background Page in the Chrome Extensions manager (<a href="chrome://extensions/" target="_blank">chrome://extensions/</a>). 
 
-<img src="screenshots/screenshot_chrome-extension-quickdraw-requests-1.png" height="200px" width="auto">
 
 This will bring up a separate console window and will start outputting web request data as you use the Quick Draw web tool.
 
-<img src="screenshots/screenshot_chrome-extension-quickdraw-requests-2.png" height="500px" width="auto">
 
 Unfortunately, I failed to realize that the chrome.webRequest API does not allow access to response body data, which is where the Google AI API guessing results are contained. This threw a wrench into my plan because without that data in the Chrome Extension background, I obviously wouldn't be able to visualize it the way I wanted.
 
@@ -83,7 +76,6 @@ I manually recreated the structure of the cURL string into the necessary Request
 
 It worked! 
 
-<img src="screenshots/screenshot_python-test-quickdraw-api.png" height="400px" width="auto">
 
 Now, maybe this shouldn't have come as a surprise to me but it was an exciting realization nonetheless. Knowing that I can use the Google AI API outside of the Quick Draw web tool, I decided to make my own version...
 
@@ -100,7 +92,6 @@ Another trick involving time was figuring out how often to call the Google AI AP
 
 The last trick was manipuating the data structure of the guessed results (guessed object name and guess score) that are returned by the Google AI API call in order to plot the results. I settled on using <a href="http://www.highcharts.com/" target="_blank">Highchart.js</a> for plotting since I'm familiar with it and it seemed to have the easiest method of creating multiple line series. In order to capture all possible guesses that could be returned by the API, I just used an object (<code>d_scores</code>)where each guessed object name is a different key. The value of each key is an array of  guess scores with a length equal to the total number of guesses. Anytime an API call is returned, there are 20 guessed object names and their associated scores, so I just loop through them all and check if the guessed object name already exists in <code>d_scores</code>. If it does, append the new guess score to that key-value array. If it doesn't, append <code>null</code>. Then, to keep up with the key-value arrays of guessed object names that weren't returned by that API call, loop through each key in <code>d_scores</code> and if it wasn't in the API return, append <code>null</code>. The result of this is a full set of all guessed object names with arrays of guess scores, where all lengths are equal to the total number of guesse at all points in time. This set can easily be passed to Highcharts as the data input for a multiple data series line chart.
 
-<img src="screenshots/screenshot_quickdraw-google-1.png" height="500px" width="auto">
 
 <i>References</i>
 <ul>
